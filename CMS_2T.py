@@ -7,50 +7,43 @@ import heppy.statistics.rrandom as random
 class ECAL(DetectorElement):
 
     def __init__(self):
-        depth = 0.25
-        inner_radius = 1.3
-        inner_z = 2.6
-        nX0 = 23  #CLIC CDR, page 70, value for CLIC_ILD
-        nLambdaI = 1  # ibid
-        outer_radius = inner_radius + depth
-        outer_z = inner_z + depth
-        X0 = depth / nX0
-        lambdaI = depth / nLambdaI
-        volume = VolumeCylinder('ecal', outer_radius, outer_z, inner_radius, inner_z)
-        mat = material.Material('ECAL', X0, lambdaI)
-        # todo: recompute
-        self.eta_junction = volume.inner.eta_junction()
-        # as for ILD (thresholds chosen by Mogens)
-        self.emin = {'barrel':0.5, 'endcap':0.5}
-        # CLIC CDR p.123. adding a noise term of 1%
-        self.eres = {'barrel':[0.167, 0.010, 0.011]}
+        volume = VolumeCylinder('ecal', 1.55, 2.1, 1.30, 2. )
+        mat = material.Material('ECAL', 8.9e-3, 0.275)
+        self.eta_crack = 1.479
+        self.emin = {'barrel':0.3, 'endcap':1.}
+        self.eres = {'barrel':[4.22163e-02, 1.55903e-01, 7.14166e-03], 'endcap':[-2.08048e-01, 3.25097e-01, 7.34244e-03]}
+        self.eresp = {'barrel':[1.00071, -9.04973, -2.48554], 'endcap':[9.95665e-01, -3.31774, -2.11123]}
         super(ECAL, self).__init__('ecal', volume,  mat)
 
     def energy_resolution(self, energy, eta=0.):
         part = 'barrel'
+        if abs(eta)>1.479 and abs(eta)<3.0:
+            part = 'endcap'
         stoch = self.eres[part][0] / math.sqrt(energy)
         noise = self.eres[part][1] / energy
         constant = self.eres[part][2]
         return math.sqrt( stoch**2 + noise**2 + constant**2) 
 
     def energy_response(self, energy, eta=0):
-        return 1
-    
+        part = 'barrel'
+        if abs(eta)>self.eta_crack:
+            part = 'endcap'
+        return self.eresp[part][0]/(1+math.exp((energy-self.eresp[part][1])/self.eresp[part][2])) #using fermi-dirac function : [0]/(1 + exp( (energy-[1]) /[2] ))
+
     def cluster_size(self, ptc):
-        '''just guessing numbers (from Mogens, as in ILD).'''
         pdgid = abs(ptc.pdgid())
         if pdgid==22 or pdgid==11:
-            return 0.015
+            return 0.04
         else:
-            return 0.045
+            return 0.07
 
     def acceptance(self, cluster):
         energy = cluster.energy
         eta = abs(cluster.position.Eta())
-        if eta < self.eta_junction:
+        if eta < self.eta_crack:
             return energy>self.emin['barrel']
-        elif eta < 2.76:  #TODO check this value
-            return energy>self.emin['endcap']
+        elif eta < 2.93:
+            return energy>self.emin['endcap'] and cluster.pt>0.2
         else:
             return False
 
@@ -164,12 +157,7 @@ class CMS(Detector):
         return track.p3() .Mag() > 5 and abs(track.p3() .Eta()) < 2.5
 
     def electron_resolution(self, ptc):
-        '''returns the relative electron resolution.
-        
-        The CLIC CDR does not give any value for the electron resolution.
-        We simply use the ECAL resolution.
-        '''
-        return self.elements['ecal'].energy_resolution(ptc.e(), ptc.eta())
+        return 0.1 / math.sqrt(ptc.e())
             
     def muon_acceptance(self, track):
         return track.p3() .Pt() > 5 and abs(track.p3() .Eta()) < 2.5
@@ -182,7 +170,7 @@ class CMS(Detector):
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(2.)
+        self.elements['field'] = Field(2)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()
