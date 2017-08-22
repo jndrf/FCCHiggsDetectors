@@ -170,7 +170,7 @@ class CMS(Detector):
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(3.8)
+        self.elements['field'] = Field(2.)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()
