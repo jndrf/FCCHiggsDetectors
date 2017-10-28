@@ -1,6 +1,6 @@
-from heppy.papas.detectors.detector import Detector, DetectorElement
-import heppy.papas.detectors.material as material
-from heppy.papas.detectors.geometry import VolumeCylinder
+from detector import Detector, DetectorElement
+import material as material
+from geometry import VolumeCylinder
 import math
 import heppy.statistics.rrandom as random
 
@@ -53,7 +53,7 @@ class ECAL(DetectorElement):
 class HCAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('hcal', 4.3, 5.3, 1.9, 2.85 )
+        volume = VolumeCylinder('hcal', 4.8, 5.3, 2.4, 2.85 )
         # not sure about X0 and lambda_i, but these don't matter anyway
         mat = material.Material('HCAL', 0.018, 0.17)
         # resolution from CLIC CDR Fig. 6.11, 1st hypothesis
@@ -151,12 +151,20 @@ class CMS(Detector):
     def muon_resolution(self, ptc):
         return 0.02 
     
+    
+    def jet_energy_correction(self, jet):
+        '''The factor roughly corresponds to the raw PF jet response in CMS,
+        which is around 90%. The factor was checked in the reconstruction
+        of Z->jj in papas.
+        '''
+        return 1.1
+    
     def __init__(self):
         super(CMS, self).__init__()
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(2.)
+        self.elements['field'] = Field(2.0)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()

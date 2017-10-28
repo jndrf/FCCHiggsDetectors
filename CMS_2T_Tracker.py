@@ -1,13 +1,13 @@
-from heppy.papas.detectors.detector import Detector, DetectorElement
-import heppy.papas.detectors.material as material
-from heppy.papas.detectors.geometry import VolumeCylinder
+from detector import Detector, DetectorElement
+import material as material
+from geometry import VolumeCylinder
 import math
 import heppy.statistics.rrandom as random
 
 class ECAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('ecal', 2.4, 2.1, 2.15, 2. )
+        volume = VolumeCylinder('ecal', 1.55, 2.1, 1.30, 2. )
         mat = material.Material('ECAL', 8.9e-3, 0.275)
         self.eta_crack = 1.479
         self.emin = {'barrel':0.3, 'endcap':1.}
@@ -53,7 +53,7 @@ class ECAL(DetectorElement):
 class HCAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('hcal', 3.75, 3.6, 2.75, 2.6 )
+        volume = VolumeCylinder('hcal', 2.9, 3.6, 1.9, 2.6 )
         mat = material.Material('HCAL', None, 0.17)
         self.eta_crack = 1.3
         self.eres = {'barrel':[0.8062, 2.753, 0.1501], 'endcap':[6.803e-06, 6.676, 0.1716]}
@@ -64,9 +64,12 @@ class HCAL(DetectorElement):
         part = 'barrel'
         if abs(eta)>self.eta_crack:
             part = 'endcap'
-        stoch = self.eres[part][0] / math.sqrt(energy)
-        noise = self.eres[part][1] / energy
-        constant = self.eres[part][2]
+        # stoch = self.eres[part][0] / math.sqrt(energy)
+        # noise = self.eres[part][1] / energy
+        # constant = self.eres[part][2]
+        stoch = 1.1 / math.sqrt(energy)
+        noise = 0
+        constant = 0.09
         return math.sqrt( stoch**2 + noise**2 + constant**2)
 
     def energy_response(self, energy, eta=0):
@@ -103,6 +106,7 @@ class HCAL(DetectorElement):
         pass
 
 
+    
 class Tracker(DetectorElement):
    
     def __init__(self):
@@ -157,12 +161,13 @@ class Tracker(DetectorElement):
         res = self._sigmapt_over_pt2(the_a, the_b, pt) * pt
         return res
 
+    
 
 class Field(DetectorElement):
 
     def __init__(self, magnitude):
         self.magnitude = magnitude
-        volume = VolumeCylinder('field', 3.75, 3.6)
+        volume = VolumeCylinder('field', 2.9, 3.6)
         mat = material.void
         super(Field, self).__init__('tracker', volume,  mat)
 
@@ -181,13 +186,7 @@ class BeamPipe(DetectorElement):
 class CMS(Detector):
         
     def electron_acceptance(self, track):
-        '''returns True if electron is seen.
-        
-        No information, cooking something up.
-        '''
-        if track.p3().Mag() > 5 and \
-           abs(track.theta()) < 80. * math.pi / 180.:
-            return random.uniform(0, 1) < 0.95  
+        return track.p3() .Mag() > 5 and abs(track.p3() .Eta()) < 2.5
 
     def electron_resolution(self, ptc):
         return 0.1 / math.sqrt(ptc.e())
@@ -196,21 +195,22 @@ class CMS(Detector):
         return track.p3() .Pt() > 5 and abs(track.p3() .Eta()) < 2.5
             
     def muon_resolution(self, ptc):
-        '''returns the relative muon resolution.
-        
-        In CLIC, the momentum resolution of the tracker is excellent and,
-        due to the large amount of material before the muon chambers,
-        the muon chambers cannot improve the resolution.
-        Therefore, using the momentum resolution of the tracker (CLIC CDR, section 8.1.1)
+        return 0.02 
+    
+    
+    def jet_energy_correction(self, jet):
+        '''The factor roughly corresponds to the raw PF jet response in CMS,
+        which is around 90%. The factor was checked in the reconstruction
+        of Z->jj in papas.
         '''
-        return self.elements['tracker'].resolution(ptc)
+        return 1.1
     
     def __init__(self):
         super(CMS, self).__init__()
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(2.)
+        self.elements['field'] = Field(2.0)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()

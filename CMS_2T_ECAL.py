@@ -1,6 +1,6 @@
-from heppy.papas.detectors.detector import Detector, DetectorElement
-import heppy.papas.detectors.material as material
-from heppy.papas.detectors.geometry import VolumeCylinder
+from detector import Detector, DetectorElement
+import material as material
+from geometry import VolumeCylinder
 import math
 import heppy.statistics.rrandom as random
 
@@ -8,7 +8,7 @@ class ECAL(DetectorElement):
 
     def __init__(self):
         depth = 0.25
-        inner_radius = 1.3
+        inner_radius = 2.15
         inner_z = 2.6
         nX0 = 23  #CLIC CDR, page 70, value for CLIC_ILD
         nLambdaI = 1  # ibid
@@ -71,9 +71,12 @@ class HCAL(DetectorElement):
         part = 'barrel'
         if abs(eta)>self.eta_crack:
             part = 'endcap'
-        stoch = self.eres[part][0] / math.sqrt(energy)
-        noise = self.eres[part][1] / energy
-        constant = self.eres[part][2]
+        # stoch = self.eres[part][0] / math.sqrt(energy)
+        # noise = self.eres[part][1] / energy
+        # constant = self.eres[part][2]
+        stoch = 1.1 / math.sqrt(energy)
+        noise = 0
+        constant = 0.09
         return math.sqrt( stoch**2 + noise**2 + constant**2)
 
     def energy_response(self, energy, eta=0):
@@ -164,12 +167,7 @@ class CMS(Detector):
         return track.p3() .Mag() > 5 and abs(track.p3() .Eta()) < 2.5
 
     def electron_resolution(self, ptc):
-        '''returns the relative electron resolution.
-        
-        The CLIC CDR does not give any value for the electron resolution.
-        We simply use the ECAL resolution.
-        '''
-        return self.elements['ecal'].energy_resolution(ptc.e(), ptc.eta())
+        return 0.1 / math.sqrt(ptc.e())
             
     def muon_acceptance(self, track):
         return track.p3() .Pt() > 5 and abs(track.p3() .Eta()) < 2.5
@@ -177,12 +175,20 @@ class CMS(Detector):
     def muon_resolution(self, ptc):
         return 0.02 
     
+    
+    def jet_energy_correction(self, jet):
+        '''The factor roughly corresponds to the raw PF jet response in CMS,
+        which is around 90%. The factor was checked in the reconstruction
+        of Z->jj in papas.
+        '''
+        return 1.1
+    
     def __init__(self):
         super(CMS, self).__init__()
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(2.)
+        self.elements['field'] = Field(2.0)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()
