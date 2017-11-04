@@ -1,6 +1,6 @@
-from detector import Detector, DetectorElement
-import material as material
-from geometry import VolumeCylinder
+from heppy.papas.detectors.detector import Detector, DetectorElement
+import heppy.papas.detectors.material as material
+from heppy.papas.detectors.geometry import VolumeCylinder
 import math
 import heppy.statistics.rrandom as random
 
