@@ -73,6 +73,7 @@ class HCAL(DetectorElement):
         return math.sqrt( stoch**2 + noise**2 + constant**2)
 
     def energy_response(self, energy, eta=0):
+        return 1.
         part = 'barrel'
         if abs(eta)>self.eta_crack:
             part = 'endcap'
@@ -106,44 +107,62 @@ class HCAL(DetectorElement):
         pass
 
 
-    
 class Tracker(DetectorElement):
    
     def __init__(self):
         super(Tracker, self).__init__('tracker',
                                       VolumeCylinder('tracker', 2.14, 2.6),
                                       material.void)
-        self.theta_max = 80. * math.pi / 180.
+        self.theta_max = 75. * math.pi / 180.
         # CLIC CDR Table 5.3.
         # using our definition of theta (equal to zero at eta=0)
         # first line added by hand for small angles,
         # with a bad resolution.
         # these tracks will not be accepted anyway,
         # but please pay attention to the acceptance method.
-        self.resmap = [ (90, 8.2e-2, 9.1e-2),  
-                        (80, 8.2e-4, 9.1e-3),
-                        (30, 9.9e-5, 3.8e-3),
-                        (20, 3.9e-5, 1.6e-3),
-                        (10, 2e-5, 7.2e-4) ]  
+        ##        self.resmap = [ (90, 8.2e-2, 9.1e-2),  
+        ##                        (80, 8.2e-4, 9.1e-3),
+        ##                        (30, 9.9e-5, 3.8e-3),
+        ##                        (20, 3.9e-5, 1.6e-3),
+        ##                        (10, 2e-5, 7.2e-4) ]
+        # Emilia Leogrande
+        self.resmap = [(80.0, [0.00064001464571871076, 0.13554521466257508, 1.1091870672607593]),
+                       (60.0, [7.9414367183119937e-05, 0.014845686639308672, 1.0821694803464048]),
+                       (40.0, [4.8900068724976152e-05, 0.0056580423053257511, 1.0924861152630758]),
+                       # setting max angle of last line to 20 so that it's used. 
+                       (20.0, [3.959021523612684e-05, 0.0028148305792289668, 1.0362271035102992])]
+
+
 
     def acceptance(self, track):
         '''Returns True if the track is seen.
         
+        Currently taken from
+        https://indico.cern.ch/event/650053/contributions/2672772/attachments/1501093/2338117/FCCee_MDI_Jul30.pdf
+
+        Original values for CLIC:
         Acceptance from the CLIC CDF p107, Fig. 5.12 without background.
         The tracker is taken to be efficient up to theta = 80 degrees. 
         '''
         pt = track.p3().Pt()
         theta = abs(track.theta())
         if theta < self.theta_max:
-            if pt > 0.4:
+            if pt < 0.1:
+                return False
+            elif pt < 0.3:
+                return random.uniform(0,1) < 0.9
+            elif pt < 1:
                 return random.uniform(0,1) < 0.95
-            elif pt > 2:
+            else:
                 return random.uniform(0,1) < 0.99
         return False
 
-    def _sigmapt_over_pt2(self, a, b, pt):
-        '''CLIC CDR Eq. 5.1'''
-        return math.sqrt( a ** 2 + (b / pt) ** 2)           
+##    def _sigmapt_over_pt2(self, a, b, pt):
+##        '''CLIC CDR Eq. 5.1'''
+##        return math.sqrt( a ** 2 + (b / pt) ** 2)           
+
+    def _sigpt_over_pt2(self, x, a, b, c):
+        return math.sqrt( a ** 2 + (b / x**c) ** 2 )
 
     def resolution(self, track):
         '''Returns relative resolution on the track momentum
@@ -153,14 +172,15 @@ class Tracker(DetectorElement):
         pt = track.p3().Pt()
         # matching the resmap defined above.
         theta = abs(track.theta()) * 180 / math.pi
-        the_a, the_b = None, None
-        for maxtheta, a, b in reversed(self.resmap):
+        the_pars = None
+        for maxtheta, pars in reversed(self.resmap):
             if theta < maxtheta:
-                the_a, the_b = a, b
+                the_pars = pars 
                 break
-        res = self._sigmapt_over_pt2(the_a, the_b, pt) * pt
+        res = 0.1  # default, for particles out of the resmap 
+        if the_pars:
+            res = self._sigpt_over_pt2(pt, *the_pars) * pt
         return res
-
     
 
 class Field(DetectorElement):
@@ -185,18 +205,62 @@ class BeamPipe(DetectorElement):
         
 class CMS(Detector):
         
-    def electron_acceptance(self, track):
-        return track.p3() .Mag() > 5 and abs(track.p3() .Eta()) < 2.5
+    def electron_acceptance(self, ptc):
+        """Delphes parametrization
+        https://github.com/delphes/delphes/blob/master/cards/delphes_card_CMS.tcl
+        96d6bcf 
+        """
+        rnd = random.uniform(0, 1)
+        if ptc.pt() < 10.:
+            return False
+        else:
+            eta = abs(ptc.eta())
+            if eta < 1.5:
+                return rnd < 0.95
+            elif eta < 2.5:
+                return rnd < 0.85
+            else:
+                return False
 
     def electron_resolution(self, ptc):
-        return 0.1 / math.sqrt(ptc.e())
+        # return 0.1 / math.sqrt(ptc.e())
+        return 0.03
             
-    def muon_acceptance(self, track):
-        return track.p3() .Pt() > 5 and abs(track.p3() .Eta()) < 2.5
+    def muon_acceptance(self, ptc):
+        """Delphes parametrization
+        https://github.com/delphes/delphes/blob/master/cards/delphes_card_CMS.tcl
+        96d6bcf 
+        """        
+        rnd = random.uniform(0, 1)
+        eta = abs(ptc.eta())        
+        if ptc.pt() < 10.:
+            return False
+        elif eta < 2.4:
+            return rnd < 0.95
+        else:
+            return False
             
     def muon_resolution(self, ptc):
-        return 0.02 
-    
+        """Delphes parametrization
+        
+          # resolution formula for muons
+          set ResolutionFormula {
+                         (abs(eta) <= 0.5) * (pt > 0.1) * sqrt(0.01^2 + pt^2*1.0e-4^2) +
+                         (abs(eta) > 0.5 && abs(eta) <= 1.5) * (pt > 0.1) * sqrt(0.015^2 + pt^2*1.5e-4^2) +
+                         (abs(eta) > 1.5 && abs(eta) <= 2.5) * (pt > 0.1) * sqrt(0.025^2 + pt^2*3.5e-4^2)}
+        """
+        rnd = random.uniform(0, 1)
+        eta = abs(ptc.eta())
+        cstt = None
+        vart = None
+        if eta < 0.5:
+            cstt, vart = 0.01, 1e-4
+        elif eta < 1.5:
+            cstt, vart = 0.015, 1.5e-4
+        else:
+            cstt, vart = 0.025, 3.5e-4
+        res = math.sqrt(cstt**2 + vart**2)
+        return res
     
     def jet_energy_correction(self, jet):
         '''The factor roughly corresponds to the raw PF jet response in CMS,
@@ -210,7 +274,7 @@ class CMS(Detector):
         self.elements['tracker'] = Tracker()
         self.elements['ecal'] = ECAL()
         self.elements['hcal'] = HCAL()
-        self.elements['field'] = Field(2.0)
+        self.elements['field'] = Field(2.)
         self.elements['beampipe'] = BeamPipe()
 
 cms = CMS()
