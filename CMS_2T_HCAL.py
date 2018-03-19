@@ -52,7 +52,7 @@ class ECAL(DetectorElement):
 class HCAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('hcal', 4.8, 5.3, 2.4, 2.85 )
+        volume = VolumeCylinder('hcal', 4.3, 5.3, 1.9, 2.85 )
         # not sure about X0 and lambda_i, but these don't matter anyway
         mat = material.Material('HCAL', 0.018, 0.17)
         # resolution from CLIC CDR Fig. 6.11, 1st hypothesis
@@ -120,7 +120,7 @@ class Field(DetectorElement):
 
     def __init__(self, magnitude):
         self.magnitude = magnitude
-        volume = VolumeCylinder('field', 2.9, 3.6)
+        volume = VolumeCylinder('field', 4.3, 5.3)
         mat = material.void
         super(Field, self).__init__('tracker', volume,  mat)
 

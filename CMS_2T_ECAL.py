@@ -8,7 +8,7 @@ class ECAL(DetectorElement):
 
     def __init__(self):
         depth = 0.25
-        inner_radius = 2.15
+        inner_radius = 1.3
         inner_z = 2.6
         nX0 = 23  #CLIC CDR, page 70, value for CLIC_ILD
         nLambdaI = 1  # ibid

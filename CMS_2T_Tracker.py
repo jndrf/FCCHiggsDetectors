@@ -7,7 +7,7 @@ import heppy.statistics.rrandom as random
 class ECAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('ecal', 1.55, 2.1, 1.30, 2. )
+        volume = VolumeCylinder('ecal', 2.4, 2.1, 2.15, 2. )
         mat = material.Material('ECAL', 8.9e-3, 0.275)
         self.eta_crack = 1.479
         self.emin = {'barrel':0.3, 'endcap':1.}
@@ -53,7 +53,7 @@ class ECAL(DetectorElement):
 class HCAL(DetectorElement):
 
     def __init__(self):
-        volume = VolumeCylinder('hcal', 2.9, 3.6, 1.9, 2.6 )
+        volume = VolumeCylinder('hcal', 3.7, 3.6, 2.7, 2.6 )
         mat = material.Material('HCAL', None, 0.17)
         self.eta_crack = 1.3
         self.eres = {'barrel':[0.8062, 2.753, 0.1501], 'endcap':[6.803e-06, 6.676, 0.1716]}
@@ -187,7 +187,7 @@ class Field(DetectorElement):
 
     def __init__(self, magnitude):
         self.magnitude = magnitude
-        volume = VolumeCylinder('field', 2.9, 3.6)
+        volume = VolumeCylinder('field', 3.7, 3.6)
         mat = material.void
         super(Field, self).__init__('tracker', volume,  mat)
 
